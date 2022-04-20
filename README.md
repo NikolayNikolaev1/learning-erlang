@@ -1,1 +1,1 @@
-Initial test commit.
+# Repository for learning erlang.
