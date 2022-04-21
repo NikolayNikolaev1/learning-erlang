@@ -8,6 +8,7 @@
 		perms/1,
 		pythag/1,
 		qsort/1,
+		sqrt/1,
 		sum/1
 ]).
 
@@ -37,7 +38,6 @@ odds_and_evens_acc([H | T], Odd, Even) ->
 odds_and_evens_acc([], Odd, Even) ->
 		{Odd, Even}.
 
-
 % Returns list of permutations from the given string.
 perms([]) -> [[]];
 
@@ -61,6 +61,13 @@ qsort([Pivot | T])
 	-> qsort([X || X <- T, X < Pivot])
 		++ [Pivot] ++
 		qsort([X || X <- T, X >= Pivot]).
+
+% Returns square root of given number with error handling message for negative numbers.
+sqrt(Num) when Num < 0 ->
+		erlang:error({squareRootNegativeArgument, Num});
+
+sqrt(Num) ->
+		math:sqrt(Num).
 
 % Sum a list of numbers and return the result.
 sum(Num)
