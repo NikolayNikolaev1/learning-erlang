@@ -1,6 +1,6 @@
 % Recreation of the lib_misc module.
 -module(lib_misc).
--export([for/2, sum/1]).
+-export([for/3, sum/1]).
 
 % For loop.
 for(Max, Max, F)
