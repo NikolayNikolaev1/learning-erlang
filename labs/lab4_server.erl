@@ -17,14 +17,15 @@ loop(State) ->
 	loop(NewState).
 
 rpc(Server, Request) ->
-	SyncPr = spawn(server, rpc_receive, [Server]),
+	SyncPr = spawn(lab4_server, rpc_receive, [Server]),
 	io:format("SyncPr: ~p~n", [SyncPr]),
 	Server ! {SyncPr, Request},
 	io:format("Hello from client!~n").
 
 rpc_receive(Server) ->
 	receive
-		{Server, Response} -> Response;
+		{Server, Response} -> io:format("Response from client: ~p~n", [Response]),
+				      Response;
 		Any -> io:format("Any from client: ~p~n", [Any])
 	end.
 
