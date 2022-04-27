@@ -2,9 +2,11 @@
 -module(lib_misc).
 -export([
 		for/3,
+		keep_alive/2,
 		odds_and_evens/1,
 		odds_and_evens_acc/1,
 		odds_and_evens_acc/3,
+		on_exit/2,
 		perms/1,
 		pythag/1,
 		qsort/1,
@@ -18,6 +20,11 @@ for(Max, Max, F)
 
 for(I, Max, F)
 	-> [F(I)|for(I+1, Max, F)].
+
+%% Keeps alive a process that is linked with another exited with an error process.
+keep_alive(Name, Fun) ->
+	register(Name, Pid = spawn(Fun)),
+	on_exit(Pid, fun(_Why) -> keep_alive(Name, fun) end).
 
 % Splits a list of numbers into 2 lists - even and odd numbers, by traversing the list 2 times.
 odds_and_evens(Numbers) ->
@@ -37,6 +44,15 @@ odds_and_evens_acc([H | T], Odd, Even) ->
 		
 odds_and_evens_acc([], Odd, Even) ->
 		{Odd, Even}.
+
+%% Error handler that returns information about Pid and reason.
+on_exit(Pid, Fun) ->
+	spawn(fun() -> process_flag(trap_exit, true),
+		       link(Pid),
+		       receive
+			       {'EXIT', Pid, Why} -> Fun(Why)
+		       end
+	      end ).
 
 % Returns list of permutations from the given string.
 perms([]) -> [[]];
