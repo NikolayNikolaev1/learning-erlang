@@ -1,43 +1,49 @@
 -module(binary_tree).
--export([loop/1, start/1]).
+-export([createChild/2, loop/1, start/1]).
 
 createChild(Level, ParentPid) ->
-	spawn(binary_tree, loop, [{Level, ParentPid, [[] []]}]).
+	spawn(binary_tree, loop, [{Level, ParentPid, [], []}]).
 
 loop({1, Parent, LChild, RChild}) ->
-	Size = 1,
-	Stage = {Size, Parent, LChild, RChild},
+	Level = 1,
+	State = {Level, Parent, LChild, RChild},
 
 	receive
-		create_child -> Parent ! get_left
+		create_child -> NewState = State;
+		{RootPid, get_tree, TreeList}
 		Any -> Any,
-		       NewStage = Stage
+		       NewState = State
 	end,
 
-	loop(NewStage);
+	loop(NewState);
 
 loop({Level, Parent, LChild, RChild}) ->
-	Stage = {Size, Parent, LChild, RChild},
+	State = {Level, Parent, LChild, RChild},
 
 	receive
 		create_child -> NewLChild = createChild(Level-1, self()),
 				NewRChild = createChild(Level-1, self()),
 				NewLChild ! create_child,
 				NewRChild ! create_child,
-				NewStage = {Size, Parent, NewLChild, NewRChild};
-		{double, Num} -> 
+				NewState = {Level, Parent, NewLChild, NewRChild};
+		{get_children, TreeList} -> Parent ! {get_children, [{children, LChild, RChild} | TreeList]},
+					    NewState = State;
+		{RootPid, get_tree, TreeList} -> BinaryTree  = [{Level, self()} | TreeList],
+						 LChild ! {RootPid, get_tree, BinaryTree},
+						 RChild ! {RootPid, get_tree, BinaryTree},
+						 NewState = State;
 		Any -> Any,
-		       NewStage = Stage
+		       NewState = State
 	end,
 
-	loop(NewStage).
+	loop(NewState).
 
+rpc(TreePid, Request, TreeList) ->
+	Tree ! {self(), Request},
+	receive
+		{get_tree, TreeList} -> 
+	end.
 
 start({Size}) ->
-	RootPid = spawn(binary_tree, loop, [{Size, [], [], []}]),
-
-	receive
-		Response -> Response
-	end,
-
-	RootPid.
+	RootPid = spawn(binary_tree, loop, [{Size, self(), [], []}]),
+	spawn(binary_tree, rpc, [RootPid, [], ]).
