@@ -13,9 +13,15 @@ createCode(SecretCode, N, Digits) ->
 loop({_SecretCode, _SecretCode, ClientPid, _Bulls, _Cows}) ->
 	ClientPid ! {self(), true};
 
-loop({SecretCode, UserCode, ClientPid, Bulls, Cows}) ->
-	[Cows + 1 || X =:= Y, X <- SecretCode, Y <- UserCode],
+loop({SecretCode, UserCode, ClientPid, 0, 0}) ->
+	Bulls = 0,
+	Cows = 0,
+	State = {SecretCode, UserCode, ClientPid, Bulls, Cows},
+	[NewState = {SecretCode, UserCode, ClientPid, Bulls, Cows + 1} || X <- SecretCode, Y <- UserCode, X =:= Y],
 
+	ClientPid ! [Bulls, Cows],
+	NewState = {SecretCode, [], Clientpid, [], []},
+	loop(NewState);
 
 loop({SecretCode, UserCode, ClientPid, _Bulls, _Cows}) ->
 	State = {SecretCode, UserCode, ClientPid},
