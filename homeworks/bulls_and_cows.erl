@@ -1,35 +1,43 @@
+%% Client-Serve game based on Bulls and Cows.
 -module(bulls_and_cows).
 -export([client/2, rpc/2, loop/1, start/0]).
 
-createCode() -> 
-	createCode([], 4, lists:seq(0, 9)).
+%% Generate a random valid code of 4 numbers with unique digits from 0 to 9.
+create_code() -> 
+	create_code([], 4, lists:seq(0, 9)).
 
-createCode(SecretCode, 0, _Digits) -> SecretCode;
+create_code(SecretCode, 0, _Digits) -> SecretCode;
 
-createCode(SecretCode, N, Digits) ->
+create_code(SecretCode, N, Digits) ->
 	Next = lists:nth(rand:uniform(length(Digits)), Digits),
-	createCode([Next | SecretCode], N-1, Digits -- [Next]).
+	create_code([Next | SecretCode], N-1, Digits -- [Next]).
 
-loop({_SecretCode, _SecretCode, ClientPid, _Bulls, _Cows}) ->
-	ClientPid ! {self(), true};
+%% Returns the result of the current user inputed code.
+get_result(_SecretCode, [], Bulls, Cows, 5) -> {Bulls, Cows};
 
-loop({SecretCode, UserCode, ClientPid, 0, 0}) ->
-	Bulls = 0,
-	Cows = 0,
-	State = {SecretCode, UserCode, ClientPid, Bulls, Cows},
-	[NewState = {SecretCode, UserCode, ClientPid, Bulls, Cows + 1} || X <- SecretCode, Y <- UserCode, X =:= Y],
+get_result(SecretCode, SecretCode, _Bulls, _Cows, _Counter) -> {4, 0};
 
-	ClientPid ! [Bulls, Cows],
-	NewState = {SecretCode, [], Clientpid, [], []},
-	loop(NewState);
+get_result(SecretCode, [Next|ClientCode], Bulls, Cows, Counter) ->
+	case lists:nth(Counter, SecretCode) =:= Next of
+		true -> get_result(SecretCode, ClientCode, Bulls+1, Cows, Counter+1);
+		false -> NewCows = [0|[1 || X <- SecretCode, X =:= Next]],
+			 get_result(SecretCode, ClientCode, Bulls, Cows+lists:sum(NewCows), Counter+1)
+	end.
 
-loop({SecretCode, UserCode, ClientPid, _Bulls, _Cows}) ->
-	State = {SecretCode, UserCode, ClientPid},
+%% TODO: Working on validation of user input.
+%is_valid(ClientCode) ->length(ClientCode) =:= 4 and [|| X <- ClientCode]
+
+loop({SecretCode}) ->
+	State = {SecretCode},
 
 	receive
-		{Client, new_game} -> NewCode = createCode(),
-				      NewState = {NewCode, [], Client};
-		{Client, {try_code, TestCode}} -> NewState = {SecretCode, TestCode, Client};
+		{Client, new_game} -> 
+			NewCode = create_code(),
+			NewState = {NewCode},
+			Client ! {self(), new_game};
+		{Client, {try_code, ClientCode}} -> Result = get_result(SecretCode, ClientCode, 0, 0, 1),
+						    Client ! {self(), Result},
+						    NewState = {SecretCode};
 		Any -> Any,
 		       NewState = State
 	end,
@@ -40,14 +48,17 @@ rpc(Server, Request) ->
 	Server ! {self(), Request},
 	
 	receive
-		{Server, true} -> io:format("Game won!");
+		{Server, new_game} -> 
+			io:format("New Game started.~n");
+		{Server, {Bulls, Cows}} ->
+			io:format("Bulls: ~p, Cows: ~p~n", [Bulls, Cows]);
 		{Server, Response} -> Response;
 		Any -> io:format("Any: ~p~n", [Any])
 	end.
 
 start() ->
-	RandomCode = createCode(),
-	spawn(bulls_and_cows, loop, [{RandomCode, [], self(), [], []}]).
+	RandomCode = create_code(),
+	spawn(bulls_and_cows, loop, [{RandomCode}]).
 
 client(Server, Request) ->
 	rpc(Server, Request).
