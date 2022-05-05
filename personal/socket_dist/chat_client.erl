@@ -1,5 +1,14 @@
 -module(chat_client).
--export([start/0]).
+-export([connect/5, start/0, test/0]).
+-import(io_widget, [
+		    get_state/1,
+		    insert_str/2,
+		    set_prompt/2,
+		    set_state/2,
+		    set_title/2,
+		    set_handler/2,
+		    update_state/3
+		   ]).
 
 active(Widget, MM) ->
 	receive
@@ -47,12 +56,32 @@ handler(Host, Port, HostPsw, Group, Nick) ->
 	start_connector(Host, Port, HostPsw),
 	disconnected(Widget, Group, Nick).
 
+parse_command(Str) -> skip_to_gt(Str).
+
+sleep(T) ->
+	receive
+	after T -> true
+	end.
+
+skip_to_gt(">" ++ T) -> T;
+skip_to_gt([_|T]) -> skip_to_gt(T);
+skip_to_gt([]) -> exit("no >").
+
 start() ->
 	connect("localhost", 2223, , "AsDT67aQ", "general", "joe").
 
 start_connector(Host, Port, Pwd) ->
 	S = self(),
 	spawn_link(fun() -> try_to_connect(S, Host, Port, Pwd) end).
+
+test() ->
+	connect("localhost", 2223, "AsDT67aQ", "general", "joe"),
+	connect("localhost", 2223, "AsDT67aQ", "general", "jane"),
+	connect("localhost", 2223, "AsDT67aQ", "general", "jim"),
+	connect("localhost", 2223, "AsDT67aQ", "general", "sue").
+
+to_str(Term) ->
+	io_lib:format("~p~n", [Term]).
 
 try_to_connect(Parent, Host, Port, Pwd) ->
 	%% Parent is the Pid of the process that spawned this process.
