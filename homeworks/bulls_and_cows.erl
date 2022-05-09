@@ -24,8 +24,9 @@ get_result(SecretCode, [Next|ClientCode], Bulls, Cows, Counter) ->
 			 get_result(SecretCode, ClientCode, Bulls, Cows+lists:sum(NewCows), Counter+1)
 	end.
 
-%% TODO: Working on validation of user input.
-%is_valid(ClientCode) ->length(ClientCode) =:= 4 and [|| X <- ClientCode]
+%% Substracts the client code from list of digits 0-9.
+%% If a valid ClientCode with 4 unique digits from 0 to 9 is substracted, the length of the substracted list should be 6.
+is_valid(ClientCode) -> length(lists:subtract(lists:seq(0, 9), ClientCode)) =:= 6.
 
 loop({SecretCode}) ->
 	State = {SecretCode},
@@ -35,9 +36,15 @@ loop({SecretCode}) ->
 			NewCode = create_code(),
 			NewState = {NewCode},
 			Client ! {self(), new_game};
-		{Client, {try_code, ClientCode}} -> Result = get_result(SecretCode, ClientCode, 0, 0, 1),
-						    Client ! {self(), Result},
-						    NewState = {SecretCode};
+		{Client, {try_code, ClientCode}} -> 
+			case is_valid(ClientCode) of
+				true ->
+					Result = get_result(SecretCode, ClientCode, 0, 0, 1),
+					Client ! {self(), Result};
+				false -> 
+					Client ! {self(), invalid_code}
+			end,
+			NewState = {SecretCode};
 		Any -> Any,
 		       NewState = State
 	end,
@@ -50,6 +57,8 @@ rpc(Server, Request) ->
 	receive
 		{Server, new_game} -> 
 			io:format("New Game started.~n");
+		{Server, invalid_code} ->
+			io:format("Invalid code!~nCode must be 4 digits long from 0 to 9 with no duplicates.~n");
 		{Server, {Bulls, Cows}} ->
 			io:format("Bulls: ~p, Cows: ~p~n", [Bulls, Cows]);
 		{Server, Response} -> Response;
