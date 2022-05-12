@@ -1,3 +1,6 @@
+%% Module for handling exit signals from processes in a binary tree structure.
+%% The SysProcess updates the binary tree with a new Pid based of the previously exited pid being a left or a right child.
+%% Includes Server-Client comunication.
 -module(proc_struct).
 -export([
 	 client/2,
